@@ -1,22 +1,25 @@
 import streamlit as st
 import json
-from transformers import pipeline
 
 # ------------------------------
-# Lightweight free model setup
+# Streamlit Page Configuration
 # ------------------------------
-@st.cache_resource
-def load_model():
-    # Free Hugging Face model
-    return pipeline("text-generation", model="distilgpt2")
-
-model = load_model()
+st.set_page_config(page_title="Library-Free EHR - PRAL MVP", layout="wide")
+st.title("🏥 Library-Free EHR - PRAL MVP")
+st.caption("Perceive → Reason → Act → Learn → Loop | Start → Run → Check → Loop")
 
 # ------------------------------
-# PRAL Step Functions
+# Memory to simulate learning
 # ------------------------------
+if "memory" not in st.session_state:
+    st.session_state.memory = []
+
+# ------------------------------
+# PRAL Agent (Pure Python without Heavy Langchain Library)
+# ------------------------------
+
 def perceive():
-    """Step 1: Perceive - Simulate capturing patient data."""
+    """Step 1: Capture patient data"""
     patient_data = {
         "patient_id": "P-001",
         "name": "John Doe",
@@ -26,99 +29,84 @@ def perceive():
         "blood_pressure": 170,
         "last_visit": "2025-09-20"
     }
-    return json.dumps(patient_data, indent=2)
+    return patient_data
 
-def reason(patient_json):
-    """Step 2: Reason - Explain what AI thinks using free model."""
-    prompt = (
-        "You are a healthcare assistant. Analyze this patient data and "
-        "explain in simple words if the patient needs urgent care.\n\n"
-        f"Patient Data:\n{patient_json}\n\n"
-        "Response:"
-    )
-    result = model(prompt, max_length=200, num_return_sequences=1)
-    return result[0]['generated_text']
-
-def act(reasoning_text):
-    """Step 3: Act - Simple decision making."""
-    if "high blood pressure" in reasoning_text.lower() or "urgent" in reasoning_text.lower():
-        return "🚨 ALERT: Immediate attention required. Notify doctor now."
-    elif "follow-up" in reasoning_text.lower():
-        return "⚠️ Schedule a follow-up appointment within 24 hours."
+def reason(patient_data):
+    """Step 2: Analyze data and give reasoning"""
+    bp = patient_data.get("blood_pressure", 0)
+    reasoning = {}
+    if bp >= 160:
+        reasoning["Risk Level"] = "High"
+        reasoning["Explanation"] = f"Patient has dangerously high blood pressure: {bp} mmHg."
+        reasoning["Recommended Action"] = "Alert doctor immediately and start monitoring."
+    elif bp >= 140:
+        reasoning["Risk Level"] = "Moderate"
+        reasoning["Explanation"] = f"Patient blood pressure is elevated: {bp} mmHg."
+        reasoning["Recommended Action"] = "Schedule follow-up within 24 hours."
     else:
-        return "✅ No urgent action needed right now."
+        reasoning["Risk Level"] = "Low"
+        reasoning["Explanation"] = f"Patient blood pressure is normal: {bp} mmHg."
+        reasoning["Recommended Action"] = "Continue normal care."
+    return reasoning
 
-def learn(reasoning_text, memory_list):
-    """Step 4: Learn - Store reasoning for later reference."""
-    memory_list.append(reasoning_text)
-    return memory_list
+def act(reasoning):
+    """Step 3: Act based on reasoning"""
+    action = reasoning.get("Recommended Action", "No action needed.")
+    return action
+
+def learn(reasoning):
+    """Step 4: Learn and store reasoning in memory"""
+    st.session_state.memory.append(reasoning)
+    return st.session_state.memory
 
 # ------------------------------
-# Streamlit App UI
-# ------------------------------
-st.set_page_config(page_title="EHR PRAL Agent", layout="wide")
-
-st.title("🏥 Free EHR Agent - PRAL MVP")
-st.caption("Perceive → Reason → Act → Learn → Loop | 100% Free and Lightweight")
-
-# Memory to simulate AI learning
-if "memory" not in st.session_state:
-    st.session_state.memory = []
-
 # Sidebar Navigation
+# ------------------------------
 demo_choice = st.sidebar.radio(
     "Choose a demo:",
     ["Demo 1 - Perceive", "Demo 2 - Reasoning", "Demo 3 - Full PRAL Loop"]
 )
 
 # ------------------------------
-# DEMO 1: Perceive
+# DEMO 1: Perceive Agent 
 # ------------------------------
 if demo_choice == "Demo 1 - Perceive":
     st.subheader("Demo 1: Perceive")
-    st.write("Capturing patient data like a hospital EHR system.")
-    data = perceive()
-    st.code(data, language="json")
+    st.write("Simulated patient data capture:")
+    patient_data = perceive()
+    st.json(patient_data)
 
 # ------------------------------
-# DEMO 2: Reasoning
+# DEMO 2: Reasoning Agent 
 # ------------------------------
 elif demo_choice == "Demo 2 - Reasoning":
     st.subheader("Demo 2: Reasoning")
-    st.write("The free model will analyze patient data and explain in simple language.")
-
-    data = perceive()
+    patient_data = perceive()
     st.write("### Patient Data")
-    st.code(data, language="json")
-
-    st.write("### AI Reasoning")
-    reasoning = reason(data)
-    st.text_area("Reasoning Output", reasoning, height=150)
+    st.json(patient_data)
+    st.write("### Reasoning")
+    reasoning = reason(patient_data)
+    st.json(reasoning)
 
 # ------------------------------
-# DEMO 3: Full PRAL Loop
+# DEMO 3: Full PRAL Loop Agent
 # ------------------------------
 elif demo_choice == "Demo 3 - Full PRAL Loop":
-    st.subheader("Demo 3: Full PRAL Loop Simulation")
-    st.write("Start → Run → Check → Perceive → Reason → Act → Learn → Loop")
-
-    # Step 1: Perceive
-    st.write("**Step 1: Perceive - Capturing Patient Data**")
-    data = perceive()
-    st.code(data, language="json")
-
-    # Step 2: Reason
-    st.write("**Step 2: Reason - Analyzing Patient Data**")
-    reasoning = reason(data)
-    st.text_area("Reasoning Output", reasoning, height=150)
-
-    # Step 3: Act
-    st.write("**Step 3: Act - Taking Action Based on Reasoning**")
+    st.subheader("Demo 3: Full PRAL Loop")
+    
+    st.write("**Step 1: Perceive**")
+    patient_data = perceive()
+    st.json(patient_data)
+    
+    st.write("**Step 2: Reason**")
+    reasoning = reason(patient_data)
+    st.json(reasoning)
+    
+    st.write("**Step 3: Act**")
     action = act(reasoning)
     st.success(action)
-
-    # Step 4: Learn
-    st.write("**Step 4: Learn - AI Improves Over Time**")
-    st.session_state.memory = learn(reasoning, st.session_state.memory)
-    st.write("**Memory Log:**")
-    st.json(st.session_state.memory)
+    
+    st.write("**Step 4: Learn**")
+    memory = learn(reasoning)
+    st.write("**Memory Log**")
+    st.json(memory)
